@@ -1,11 +1,5 @@
-"""
-Cardano SPO CLI - Professional CLI tool for Cardano Stake Pool Operator wallet setup
-"""
+"""Cardano SPO CLI package."""
 
-__version__ = "1.0.0"
-__author__ = "Cardano SPO CLI"
-__email__ = "support@cardano-spo-cli.org"
-
-from .cli import main
-
-__all__ = ["main"]
+__version__ = "0.1.0"
+__author__ = "danbaruka"
+__email__ = "danbaruka@users.noreply.github.com"
