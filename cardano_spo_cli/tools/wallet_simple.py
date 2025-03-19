@@ -139,3 +139,4 @@ def generate_wallet_simple(ticker: str, purpose: str):
     generator = SimpleCardanoWalletGenerator(ticker)
     return generator.generate_wallet(purpose)
 # Address generation
+# File management
