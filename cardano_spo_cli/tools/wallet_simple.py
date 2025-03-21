@@ -140,3 +140,4 @@ def generate_wallet_simple(ticker: str, purpose: str):
     return generator.generate_wallet(purpose)
 # Address generation
 # File management
+# Secure permissions
