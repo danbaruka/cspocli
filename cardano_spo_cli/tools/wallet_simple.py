@@ -141,3 +141,4 @@ def generate_wallet_simple(ticker: str, purpose: str):
 # Address generation
 # File management
 # Secure permissions
+# Directory structure
