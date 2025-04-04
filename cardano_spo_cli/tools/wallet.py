@@ -323,3 +323,4 @@ def generate_wallet_real(
     """Main function to generate a wallet using real Cardano tools"""
     generator = CardanoWalletGenerator(ticker)
     return generator.generate_wallet(purpose, network)
+# Real wallet
