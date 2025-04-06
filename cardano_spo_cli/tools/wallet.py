@@ -324,3 +324,4 @@ def generate_wallet_real(
     generator = CardanoWalletGenerator(ticker)
     return generator.generate_wallet(purpose, network)
 # Real wallet
+# Address verification
