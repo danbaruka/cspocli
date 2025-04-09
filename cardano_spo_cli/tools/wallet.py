@@ -325,3 +325,4 @@ def generate_wallet_real(
     return generator.generate_wallet(purpose, network)
 # Real wallet
 # Address verification
+# Cross verification
