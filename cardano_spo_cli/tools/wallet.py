@@ -326,3 +326,4 @@ def generate_wallet_real(
 # Real wallet
 # Address verification
 # Cross verification
+# Command structure
