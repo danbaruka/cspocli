@@ -327,3 +327,4 @@ def generate_wallet_real(
 # Address verification
 # Cross verification
 # Command structure
+# Fix cardano-address
