@@ -204,4 +204,4 @@ echo ""
 
 print_success "Installation completed! 🚀"
 print_warning "Remember to activate the virtual environment in new terminals:"
-print_warning "  source venv/bin/activate" 
+print_warning "  source venv/bin/activate" # Install script
