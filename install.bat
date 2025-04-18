@@ -40,4 +40,4 @@ echo    python -m cardano_spo_cli --help
 echo.
 echo 💡 Pour plus d'informations, consultez le README.md
 echo.
-pause 
+pause # Windows install
