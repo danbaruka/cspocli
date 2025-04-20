@@ -173,4 +173,4 @@ clean:
 	@echo "🧹 Cleaning up..."
 	@rm -rf ~/.CSPO_* 2>/dev/null || true
 	@rm -rf .cardano_spo_cli 2>/dev/null || true
-	@echo "✅ Cleanup completed!" 
+	@echo "✅ Cleanup completed!" # Makefile
