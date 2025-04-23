@@ -14,3 +14,4 @@ make install
 cspocli generate --ticker MYPOOL --purpose pledge
 ```
 # Updated README
+# Documentation
