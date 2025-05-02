@@ -135,3 +135,4 @@ def list_wallet_files(ticker: str, purpose: str) -> List[Path]:
     """List wallet files available for export"""
     exporter = WalletExporter(ticker)
     return exporter.list_export_files(purpose)
+# Export functionality
