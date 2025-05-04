@@ -82,3 +82,4 @@ def get_version_info() -> dict:
         "is_dirty": is_dirty,
         "full_version": get_full_version(),
     }
+# Version management
