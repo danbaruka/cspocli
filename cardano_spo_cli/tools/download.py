@@ -179,10 +179,31 @@ def verify_tools() -> Dict[str, Path]:
         else:
             missing_tools.append(tool_name)
 
-    # Check if we have sufficient tools for real mode (at least cardano-cli and cardano-address)
-    if len(tools) >= 2:
-        click.echo("✅ Sufficient tools available for real mode")
-        return tools
+            # Check if we have sufficient tools for real mode (at least cardano-cli and cardano-address)
+        if len(tools) >= 2:
+            # Additional check for ARM64 cardano-cli crash
+            if "cardano-cli" in tools:
+                try:
+                    result = subprocess.run(
+                        [str(tools["cardano-cli"]), "--version"],
+                        capture_output=True,
+                        text=True,
+                        timeout=5,
+                    )
+                    if result.returncode != 0:
+                        # Remove crashing cardano-cli from tools
+                        del tools["cardano-cli"]
+                        click.echo("⚠️  cardano-cli crashes, using simplified mode")
+                        return {}
+                except Exception:
+                    # Remove crashing cardano-cli from tools
+                    if "cardano-cli" in tools:
+                        del tools["cardano-cli"]
+                    click.echo("⚠️  cardano-cli crashes, using simplified mode")
+                    return {}
+
+            click.echo("✅ Sufficient tools available for real mode")
+            return tools
 
     if missing_tools:
         click.echo(f"❌ Missing tools: {', '.join(missing_tools)}")
@@ -204,4 +225,6 @@ def verify_tools() -> Dict[str, Path]:
             return {}
 
     return tools
+
+
 # Cardano tools

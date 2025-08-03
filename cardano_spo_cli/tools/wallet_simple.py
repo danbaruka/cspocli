@@ -8,6 +8,7 @@ from pathlib import Path
 from mnemonic import Mnemonic
 from colorama import Fore, Style
 
+
 class SimpleCardanoWalletGenerator:
     def __init__(self, ticker: str):
         self.ticker = ticker.upper()
@@ -37,11 +38,11 @@ class SimpleCardanoWalletGenerator:
         """Generate key pair from seed and path"""
         master_key = self.derive_master_key(seed)
         child_key = self.derive_child_key(master_key, path)
-        
+
         # Simplified key pair generation
         private_key = child_key[:32]
         public_key = hashlib.sha256(private_key).digest()
-        
+
         return private_key, public_key
 
     def generate_address(self, public_key: bytes, is_stake: bool = False) -> str:
@@ -49,14 +50,16 @@ class SimpleCardanoWalletGenerator:
         # Simplified address generation
         prefix = "stake" if is_stake else "addr"
         network = "test" if is_stake else "1"
-        
+
         # Create a simplified address format
         key_hash = hashlib.sha256(public_key).hexdigest()[:28]
         return f"{prefix}{network}1{key_hash}"
 
-    def generate_wallet(self, purpose: str):
+    def generate_wallet(self, purpose: str, network: str = "mainnet"):
         """Generate a complete wallet (simplified version)"""
-        click.echo(f"{Fore.CYAN}Generating {self.ticker}-{purpose} wallet (simplified version)...{Style.RESET_ALL}")
+        click.echo(
+            f"{Fore.CYAN}Generating {self.ticker}-{purpose} wallet (simplified version)...{Style.RESET_ALL}"
+        )
 
         # Generate mnemonic phrase
         mnemonic = self.generate_mnemonic()
@@ -71,11 +74,15 @@ class SimpleCardanoWalletGenerator:
         click.echo(f"{Fore.GREEN}Master key derived{Style.RESET_ALL}")
 
         # Generate payment keys
-        payment_skey, payment_vkey = self.generate_key_pair(master_key, "1852H/1815H/0H/0/0")
+        payment_skey, payment_vkey = self.generate_key_pair(
+            master_key, "1852H/1815H/0H/0/0"
+        )
         click.echo(f"{Fore.GREEN}Payment keys derived{Style.RESET_ALL}")
 
         # Generate staking keys
-        staking_skey, staking_vkey = self.generate_key_pair(master_key, "1852H/1815H/0H/2/0")
+        staking_skey, staking_vkey = self.generate_key_pair(
+            master_key, "1852H/1815H/0H/2/0"
+        )
         click.echo(f"{Fore.GREEN}Staking keys derived{Style.RESET_ALL}")
 
         # Generate addresses
@@ -134,10 +141,13 @@ class SimpleCardanoWalletGenerator:
             "mnemonic": mnemonic,
         }
 
-def generate_wallet_simple(ticker: str, purpose: str):
+
+def generate_wallet_simple(ticker: str, purpose: str, network: str = "mainnet"):
     """Main function to generate a wallet (simplified version)"""
     generator = SimpleCardanoWalletGenerator(ticker)
-    return generator.generate_wallet(purpose)
+    return generator.generate_wallet(purpose, network)
+
+
 # Address generation
 # File management
 # Secure permissions
