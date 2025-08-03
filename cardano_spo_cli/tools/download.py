@@ -179,8 +179,8 @@ def verify_tools() -> Dict[str, Path]:
         else:
             missing_tools.append(tool_name)
 
-            # Check if we have sufficient tools for real mode (at least cardano-cli and cardano-address)
-        if len(tools) >= 2:
+            # Check if we have sufficient tools for real mode (at least cardano-address)
+        if "cardano-address" in tools:
             # Additional check for ARM64 cardano-cli crash
             if "cardano-cli" in tools:
                 # Check if we're on ARM64 macOS
@@ -193,9 +193,12 @@ def verify_tools() -> Dict[str, Path]:
 
                 if is_arm64_macos:
                     # On ARM64 macOS, cardano-cli is known to crash due to Nix dependencies
-                    # We'll keep it but warn the user
-                    click.echo("⚠️  cardano-cli may crash on ARM64 macOS (known issue)")
-                    click.echo("💡 The CLI will handle this gracefully")
+                    # But we can still use cardano-address and bech32 for real mode
+                    click.echo(
+                        "ℹ️  cardano-cli may crash on ARM64 macOS (known compatibility issue)"
+                    )
+                    click.echo("✅ Using cardano-address and bech32 for real mode")
+                    # Keep cardano-cli but don't test it
                 else:
                     # Test cardano-cli on other platforms
                     try:

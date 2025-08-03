@@ -36,29 +36,46 @@ class CardanoWalletGenerator:
 
         # Check if cardano-cli is usable (not crashing)
         if "cardano-cli" in self.tools:
-            try:
-                result = subprocess.run(
-                    [str(self.tools["cardano-cli"]), "--version"],
-                    capture_output=True,
-                    text=True,
-                    timeout=5,
+            import platform
+
+            is_arm64_macos = platform.system() == "Darwin" and platform.machine() in [
+                "arm64",
+                "aarch64",
+            ]
+
+            if is_arm64_macos:
+                # On ARM64 macOS, cardano-cli is known to crash due to Nix dependencies
+                # But we can still use cardano-address and bech32 for real mode
+                click.echo(
+                    "ℹ️  cardano-cli may crash on ARM64 macOS (known compatibility issue)"
                 )
-                if result.returncode != 0:
+                click.echo("✅ Using cardano-address and bech32 for real mode")
+                # Keep cardano-cli but don't test it
+            else:
+                # Test cardano-cli on other platforms
+                try:
+                    result = subprocess.run(
+                        [str(self.tools["cardano-cli"]), "--version"],
+                        capture_output=True,
+                        text=True,
+                        timeout=5,
+                    )
+                    if result.returncode != 0:
+                        # Remove crashing cardano-cli from tools
+                        del self.tools["cardano-cli"]
+                        click.echo("⚠️  cardano-cli crashes, using simplified mode")
+                except Exception:
                     # Remove crashing cardano-cli from tools
-                    del self.tools["cardano-cli"]
+                    if "cardano-cli" in self.tools:
+                        del self.tools["cardano-cli"]
                     click.echo("⚠️  cardano-cli crashes, using simplified mode")
-            except Exception:
-                # Remove crashing cardano-cli from tools
-                if "cardano-cli" in self.tools:
-                    del self.tools["cardano-cli"]
-                click.echo("⚠️  cardano-cli crashes, using simplified mode")
 
         # Check if we have enough tools for real mode
-        # We need at least cardano-cli and cardano-address, bech32 can be Python library
-        if len(self.tools) >= 2:
+        # We need at least cardano-address for real mode, cardano-cli is optional
+        if "cardano-address" in self.tools:
             click.echo("✅ Using real Cardano tools mode")
         else:
-            click.echo("⚠️  Using simplified mode (some tools missing)")
+            click.echo("⚠️  Using simplified mode (cardano-address missing)")
 
     def generate_mnemonic(self) -> str:
         """Generate a 24-word recovery phrase"""
@@ -323,6 +340,8 @@ def generate_wallet_real(
     """Main function to generate a wallet using real Cardano tools"""
     generator = CardanoWalletGenerator(ticker)
     return generator.generate_wallet(purpose, network)
+
+
 # Real wallet
 # Address verification
 # Cross verification
