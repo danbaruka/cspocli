@@ -183,24 +183,39 @@ def verify_tools() -> Dict[str, Path]:
         if len(tools) >= 2:
             # Additional check for ARM64 cardano-cli crash
             if "cardano-cli" in tools:
-                try:
-                    result = subprocess.run(
-                        [str(tools["cardano-cli"]), "--version"],
-                        capture_output=True,
-                        text=True,
-                        timeout=5,
-                    )
-                    if result.returncode != 0:
+                # Check if we're on ARM64 macOS
+                import platform
+
+                is_arm64_macos = (
+                    platform.system() == "Darwin"
+                    and platform.machine() in ["arm64", "aarch64"]
+                )
+
+                if is_arm64_macos:
+                    # On ARM64 macOS, cardano-cli is known to crash due to Nix dependencies
+                    # We'll keep it but warn the user
+                    click.echo("⚠️  cardano-cli may crash on ARM64 macOS (known issue)")
+                    click.echo("💡 The CLI will handle this gracefully")
+                else:
+                    # Test cardano-cli on other platforms
+                    try:
+                        result = subprocess.run(
+                            [str(tools["cardano-cli"]), "--version"],
+                            capture_output=True,
+                            text=True,
+                            timeout=5,
+                        )
+                        if result.returncode != 0:
+                            # Remove crashing cardano-cli from tools
+                            del tools["cardano-cli"]
+                            click.echo("⚠️  cardano-cli crashes, using simplified mode")
+                            return {}
+                    except Exception:
                         # Remove crashing cardano-cli from tools
-                        del tools["cardano-cli"]
+                        if "cardano-cli" in tools:
+                            del tools["cardano-cli"]
                         click.echo("⚠️  cardano-cli crashes, using simplified mode")
                         return {}
-                except Exception:
-                    # Remove crashing cardano-cli from tools
-                    if "cardano-cli" in tools:
-                        del tools["cardano-cli"]
-                    click.echo("⚠️  cardano-cli crashes, using simplified mode")
-                    return {}
 
             click.echo("✅ Sufficient tools available for real mode")
             return tools

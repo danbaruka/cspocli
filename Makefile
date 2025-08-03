@@ -95,8 +95,8 @@ install-global:
 	@echo "✅ CLI works in virtual environment"
 	@echo ""
 	@echo "Installing Cardano tools for professional use..."
-	@chmod +x install-cardano-tools.sh && \
-	./install-cardano-tools.sh
+	@chmod +x install-cardano-tools-universal.sh && \
+	./install-cardano-tools-universal.sh
 	@echo ""
 	@echo "Creating global cspocli script..."
 	@echo "⚠️  You will be prompted for your computer password (not sudo password)"
@@ -141,8 +141,8 @@ install-tools:
 	@echo "🔧 Installing Cardano tools only..."
 	@echo "===================================="
 	@echo ""
-	@chmod +x install-cardano-tools.sh && \
-	./install-cardano-tools.sh
+	@chmod +x install-cardano-tools-universal.sh && \
+	./install-cardano-tools-universal.sh
 	@echo ""
 	@echo "✅ Cardano tools installation completed!"
 	@echo "📖 You can now use real tools mode:"
