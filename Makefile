@@ -62,7 +62,7 @@ install:
 	@echo "✅ Global cspocli script created"
 	@echo ""
 	@echo "Testing global installation..."
-	@cspocli --help > /dev/null 2>&1 || \
+	@cspocli --help || \
 		(echo "❌ Global cspocli failed to run!"; exit 1)
 	@echo "✅ Global cspocli works correctly!"
 	@echo ""
@@ -119,7 +119,7 @@ install-global:
 	@echo "✅ Global cspocli script created"
 	@echo ""
 	@echo "Testing global installation..."
-	@cspocli --help > /dev/null 2>&1 || \
+	@cspocli --help || \
 		(echo "❌ Global cspocli failed to run!"; exit 1)
 	@echo "✅ Global cspocli works correctly!"
 	@echo ""
