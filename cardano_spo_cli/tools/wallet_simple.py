@@ -13,10 +13,30 @@ class SimpleCardanoWalletGenerator:
     def __init__(self, ticker: str):
         self.ticker = ticker.upper()
         self.home_dir = Path.home() / f".CSPO_{self.ticker}"
+        self.home_dir.mkdir(parents=True, exist_ok=True)
         self.mnemo = Mnemonic("english")
 
+        # Check if shared mnemonic already exists for this ticker
+        self.shared_mnemonic_file = self.home_dir / f"{self.ticker}-shared.mnemonic.txt"
+
+    def get_or_create_shared_mnemonic(self) -> str:
+        """Get existing shared mnemonic or create new one"""
+        if self.shared_mnemonic_file.exists():
+            # Load existing shared mnemonic
+            mnemonic = self.shared_mnemonic_file.read_text().strip()
+            click.echo(f"📋 Using existing shared mnemonic for {self.ticker}")
+            return mnemonic
+        else:
+            # Create new shared mnemonic
+            mnemonic = self.mnemo.generate(strength=256)
+            # Save shared mnemonic with secure permissions
+            self.shared_mnemonic_file.write_text(mnemonic)
+            self.shared_mnemonic_file.chmod(0o600)  # Secure permissions
+            click.echo(f"🔐 Created new shared mnemonic for {self.ticker}")
+            return mnemonic
+
     def generate_mnemonic(self) -> str:
-        """Generate a 24-word recovery phrase"""
+        """Generate a 24-word recovery phrase (legacy method)"""
         return self.mnemo.generate(strength=256)
 
     def mnemonic_to_seed(self, mnemonic: str) -> bytes:
@@ -61,9 +81,9 @@ class SimpleCardanoWalletGenerator:
             f"{Fore.CYAN}Generating {self.ticker}-{purpose} wallet (simplified version)...{Style.RESET_ALL}"
         )
 
-        # Generate mnemonic phrase
-        mnemonic = self.generate_mnemonic()
-        click.echo(f"{Fore.GREEN}Recovery phrase generated{Style.RESET_ALL}")
+        # Get or create shared mnemonic phrase
+        mnemonic = self.get_or_create_shared_mnemonic()
+        click.echo(f"{Fore.GREEN}Recovery phrase ready{Style.RESET_ALL}")
 
         # Convert to seed
         seed = self.mnemonic_to_seed(mnemonic)
