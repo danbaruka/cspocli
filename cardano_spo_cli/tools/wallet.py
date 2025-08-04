@@ -1510,19 +1510,41 @@ class CardanoWalletGenerator:
 
         except Exception as e:
             click.echo(f"⚠️  Warning: Using fallback address generation: {e}")
-            # Fallback addresses
-            wallet_data["base_addr"] = (
-                f"addr_{network}1"
-                + hashlib.sha256(mnemonic_hash + "base".encode()).hexdigest()[:100]
-            )
-            wallet_data["reward_addr"] = (
-                f"stake_{network}1"
-                + hashlib.sha256(mnemonic_hash + "reward".encode()).hexdigest()[:100]
-            )
-            wallet_data["payment_addr"] = (
-                f"addr_{network}1"
-                + hashlib.sha256(mnemonic_hash + "payment".encode()).hexdigest()[:100]
-            )
+            # Fallback addresses with correct testnet format
+            if network == "testnet":
+                wallet_data["base_addr"] = (
+                    "addr_test1"
+                    + hashlib.sha256(mnemonic_hash + "base".encode()).hexdigest()[:100]
+                )
+                wallet_data["reward_addr"] = (
+                    "stake_test1"
+                    + hashlib.sha256(mnemonic_hash + "reward".encode()).hexdigest()[
+                        :100
+                    ]
+                )
+                wallet_data["payment_addr"] = (
+                    "addr_test1"
+                    + hashlib.sha256(mnemonic_hash + "payment".encode()).hexdigest()[
+                        :100
+                    ]
+                )
+            else:
+                wallet_data["base_addr"] = (
+                    f"addr_{network}1"
+                    + hashlib.sha256(mnemonic_hash + "base".encode()).hexdigest()[:100]
+                )
+                wallet_data["reward_addr"] = (
+                    f"stake_{network}1"
+                    + hashlib.sha256(mnemonic_hash + "reward".encode()).hexdigest()[
+                        :100
+                    ]
+                )
+                wallet_data["payment_addr"] = (
+                    f"addr_{network}1"
+                    + hashlib.sha256(mnemonic_hash + "payment".encode()).hexdigest()[
+                        :100
+                    ]
+                )
 
         # Generate credentials
         wallet_data["payment_cred"] = (
