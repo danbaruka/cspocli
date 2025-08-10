@@ -1,4 +1,4 @@
-# Complete Stake Pool Generation Guide
+# Complete Stake Pool Generation Guide - Cardano SPO CLI v1.1.0
 
 ## Overview
 

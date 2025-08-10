@@ -15,7 +15,7 @@ def print_banner():
     """Print welcome banner"""
     banner = f"""
 {Fore.CYAN}╔══════════════════════════════════════════════════════════════╗
-║                    Cardano SPO CLI v1.0.0                        ║
+║                    Cardano SPO CLI v1.1.0                        ║
 ║              Professional Stake Pool Operator Tool                ║
 ╚══════════════════════════════════════════════════════════════╝{Style.RESET_ALL}
 """

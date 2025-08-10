@@ -1,4 +1,4 @@
-# 🔒 Security Guide - Cardano SPO CLI
+# 🔒 Security Guide - Cardano SPO CLI v1.1.0
 
 ## Overview
 

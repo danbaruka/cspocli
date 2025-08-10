@@ -1,4 +1,4 @@
-# Cardano SPO CLI - Command Reference
+# Cardano SPO CLI v1.1.0 - Command Reference
 
 ## Overview
 

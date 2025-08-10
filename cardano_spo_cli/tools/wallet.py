@@ -1456,61 +1456,412 @@ class CardanoWalletGenerator:
         # Get or create shared mnemonic phrase
         mnemonic = self.get_or_create_shared_mnemonic()
 
-        # Convert to root key
-        root_key = self.mnemonic_to_root_key(mnemonic)
-
-        # Generate keys using deterministic fallback (more reliable)
+        # Generate keys using professional method
         wallet_data = {}
-
-        # Add mnemonic to wallet data
         wallet_data["mnemonic"] = mnemonic
 
-        # Generate deterministic keys based on mnemonic hash
-        import hashlib
-
-        mnemonic_hash = hashlib.sha256(mnemonic.encode()).digest()
-
-        # Payment keys
-        payment_hash = hashlib.sha256(
-            mnemonic_hash + f"{purpose}_payment".encode()
-        ).digest()
-        wallet_data["payment_skey"] = "58" + "20" + payment_hash.hex()
-        wallet_data["payment_vkey"] = (
-            "58" + "20" + hashlib.sha256(payment_hash).digest().hex()
-        )
-
-        # Staking keys
-        stake_hash = hashlib.sha256(mnemonic_hash + "staking".encode()).digest()
-        wallet_data["staking_skey"] = "58" + "20" + stake_hash.hex()
-        wallet_data["staking_vkey"] = (
-            "58" + "20" + hashlib.sha256(stake_hash).digest().hex()
-        )
-
-        # Generate addresses using cardano-address with Bech32 keys
         try:
-            # Convert CBOR to Bech32 for address generation
-            payment_vkey_bech32 = self.cbor_hex_to_bech32(
-                wallet_data["payment_vkey"], "addr_vk"
-            )
-            staking_vkey_bech32 = self.cbor_hex_to_bech32(
-                wallet_data["staking_vkey"], "stake_vk"
-            )
+            import tempfile
+            import os
 
-            base_addr = self.generate_payment_address(
-                payment_vkey_bech32, staking_vkey_bech32, network
-            )
-            reward_addr = self.generate_staking_address(staking_vkey_bech32, network)
-            payment_addr = self.generate_payment_only_address(
-                payment_vkey_bech32, network
-            )
+            with tempfile.TemporaryDirectory() as temp_dir:
+                # Step 1: Generate mnemonic file
+                mnemonic_file = os.path.join(temp_dir, "mnemonic.txt")
+                with open(mnemonic_file, "w") as f:
+                    f.write(mnemonic)
 
-            wallet_data["base_addr"] = base_addr
-            wallet_data["reward_addr"] = reward_addr
-            wallet_data["payment_addr"] = payment_addr
+                # Step 2: Derive root key
+                root_cmd = [
+                    str(self.tools["cardano-address"]),
+                    "key",
+                    "from-recovery-phrase",
+                    "Shelley",
+                ]
+                root_result = subprocess.run(
+                    root_cmd, input=mnemonic, capture_output=True, text=True
+                )
+                if root_result.returncode != 0:
+                    raise Exception(f"Failed to derive root key: {root_result.stderr}")
+                root_key = root_result.stdout.strip()
+
+                # Step 3: Derive payment keypair
+                purpose_index = "0" if purpose == "pledge" else "1"
+                payment_skey_cmd = [
+                    str(self.tools["cardano-address"]),
+                    "key",
+                    "child",
+                    f"1852H/1815H/0H/{purpose_index}/0",
+                ]
+                payment_skey_result = subprocess.run(
+                    payment_skey_cmd, input=root_key, capture_output=True, text=True
+                )
+                if payment_skey_result.returncode != 0:
+                    raise Exception(
+                        f"Failed to derive payment signing key: {payment_skey_result.stderr}"
+                    )
+                payment_skey = payment_skey_result.stdout.strip()
+
+                payment_vkey_cmd = [
+                    str(self.tools["cardano-address"]),
+                    "key",
+                    "public",
+                    "--with-chain-code",
+                ]
+                payment_vkey_result = subprocess.run(
+                    payment_vkey_cmd, input=payment_skey, capture_output=True, text=True
+                )
+                if payment_vkey_result.returncode != 0:
+                    raise Exception(
+                        f"Failed to derive payment verification key: {payment_vkey_result.stderr}"
+                    )
+                payment_vkey = payment_vkey_result.stdout.strip()
+
+                # Step 4: Derive stake keypair
+                stake_skey_cmd = [
+                    str(self.tools["cardano-address"]),
+                    "key",
+                    "child",
+                    "1852H/1815H/0H/2/0",
+                ]
+                stake_skey_result = subprocess.run(
+                    stake_skey_cmd, input=root_key, capture_output=True, text=True
+                )
+                if stake_skey_result.returncode != 0:
+                    raise Exception(
+                        f"Failed to derive stake signing key: {stake_skey_result.stderr}"
+                    )
+                stake_skey = stake_skey_result.stdout.strip()
+
+                stake_vkey_cmd = [
+                    str(self.tools["cardano-address"]),
+                    "key",
+                    "public",
+                    "--with-chain-code",
+                ]
+                stake_vkey_result = subprocess.run(
+                    stake_vkey_cmd, input=stake_skey, capture_output=True, text=True
+                )
+                if stake_vkey_result.returncode != 0:
+                    raise Exception(
+                        f"Failed to derive stake verification key: {stake_vkey_result.stderr}"
+                    )
+                stake_vkey = stake_vkey_result.stdout.strip()
+
+                # Step 5: Convert to CLI format using cardano-cli
+                payment_skey_file = os.path.join(temp_dir, "payment.prv")
+                with open(payment_skey_file, "w") as f:
+                    f.write(payment_skey)
+
+                payment_vkey_file = os.path.join(temp_dir, "payment.pub")
+                with open(payment_vkey_file, "w") as f:
+                    f.write(payment_vkey)
+
+                stake_skey_file = os.path.join(temp_dir, "stake.prv")
+                with open(stake_skey_file, "w") as f:
+                    f.write(stake_skey)
+
+                stake_vkey_file = os.path.join(temp_dir, "stake.pub")
+                with open(stake_vkey_file, "w") as f:
+                    f.write(stake_vkey)
+
+                # Convert payment keys
+                convert_payment_skey_cmd = [
+                    str(self.tools["cardano-cli"]),
+                    "key",
+                    "convert-cardano-address-key",
+                    "--shelley-payment-key",
+                    "--signing-key-file",
+                    payment_skey_file,
+                    "--out-file",
+                    os.path.join(temp_dir, "payment.skey"),
+                ]
+                convert_payment_skey_result = subprocess.run(
+                    convert_payment_skey_cmd, capture_output=True, text=True
+                )
+                if convert_payment_skey_result.returncode != 0:
+                    raise Exception(
+                        f"Failed to convert payment signing key: {convert_payment_skey_result.stderr}"
+                    )
+
+                convert_payment_vkey_cmd = [
+                    str(self.tools["cardano-cli"]),
+                    "key",
+                    "convert-cardano-address-key",
+                    "--shelley-payment-key",
+                    "--verification-key-file",
+                    payment_vkey_file,
+                    "--out-file",
+                    os.path.join(temp_dir, "payment.vkey"),
+                ]
+                convert_payment_vkey_result = subprocess.run(
+                    convert_payment_vkey_cmd, capture_output=True, text=True
+                )
+                if convert_payment_vkey_result.returncode != 0:
+                    raise Exception(
+                        f"Failed to convert payment verification key: {convert_payment_vkey_result.stderr}"
+                    )
+
+                # Convert stake keys
+                convert_stake_skey_cmd = [
+                    str(self.tools["cardano-cli"]),
+                    "key",
+                    "convert-cardano-address-key",
+                    "--shelley-stake-key",
+                    "--signing-key-file",
+                    stake_skey_file,
+                    "--out-file",
+                    os.path.join(temp_dir, "stake.skey"),
+                ]
+                convert_stake_skey_result = subprocess.run(
+                    convert_stake_skey_cmd, capture_output=True, text=True
+                )
+                if convert_stake_skey_result.returncode != 0:
+                    raise Exception(
+                        f"Failed to convert stake signing key: {convert_stake_skey_result.stderr}"
+                    )
+
+                convert_stake_vkey_cmd = [
+                    str(self.tools["cardano-cli"]),
+                    "key",
+                    "convert-cardano-address-key",
+                    "--shelley-stake-key",
+                    "--verification-key-file",
+                    stake_vkey_file,
+                    "--out-file",
+                    os.path.join(temp_dir, "stake.vkey"),
+                ]
+                convert_stake_vkey_result = subprocess.run(
+                    convert_stake_vkey_cmd, capture_output=True, text=True
+                )
+                if convert_stake_vkey_result.returncode != 0:
+                    raise Exception(
+                        f"Failed to convert stake verification key: {convert_stake_vkey_result.stderr}"
+                    )
+
+                # Read converted keys
+                with open(os.path.join(temp_dir, "payment.skey"), "r") as f:
+                    payment_skey_content = json.loads(f.read())
+                    wallet_data["payment_skey"] = payment_skey_content["cborHex"]
+
+                with open(os.path.join(temp_dir, "payment.vkey"), "r") as f:
+                    payment_vkey_content = json.loads(f.read())
+                    wallet_data["payment_vkey"] = payment_vkey_content["cborHex"]
+
+                with open(os.path.join(temp_dir, "stake.skey"), "r") as f:
+                    stake_skey_content = json.loads(f.read())
+                    wallet_data["staking_skey"] = stake_skey_content["cborHex"]
+
+                with open(os.path.join(temp_dir, "stake.vkey"), "r") as f:
+                    stake_vkey_content = json.loads(f.read())
+                    wallet_data["staking_vkey"] = stake_vkey_content["cborHex"]
+
+                # Step 6: Build addresses
+                network_flag = (
+                    "--testnet-magic 2" if network == "testnet" else "--mainnet"
+                )
+
+                # Build base address
+                base_cmd = [
+                    str(self.tools["cardano-cli"]),
+                    "address",
+                    "build",
+                    "--payment-verification-key-file",
+                    os.path.join(temp_dir, "payment.vkey"),
+                    "--stake-verification-key-file",
+                    os.path.join(temp_dir, "stake.vkey"),
+                    network_flag,
+                ]
+                base_result = subprocess.run(base_cmd, capture_output=True, text=True)
+                if base_result.returncode == 0:
+                    wallet_data["base_addr"] = base_result.stdout.strip()
+                else:
+                    raise Exception(
+                        f"Failed to build base address: {base_result.stderr}"
+                    )
+
+                # Build payment address
+                payment_cmd = [
+                    str(self.tools["cardano-cli"]),
+                    "address",
+                    "build",
+                    "--payment-verification-key-file",
+                    os.path.join(temp_dir, "payment.vkey"),
+                    network_flag,
+                ]
+                payment_result = subprocess.run(
+                    payment_cmd, capture_output=True, text=True
+                )
+                if payment_result.returncode == 0:
+                    wallet_data["payment_addr"] = payment_result.stdout.strip()
+                else:
+                    raise Exception(
+                        f"Failed to build payment address: {payment_result.stderr}"
+                    )
+
+                # Build stake address
+                stake_cmd = [
+                    str(self.tools["cardano-cli"]),
+                    "stake-address",
+                    "build",
+                    "--stake-verification-key-file",
+                    os.path.join(temp_dir, "stake.vkey"),
+                    network_flag,
+                ]
+                stake_result = subprocess.run(stake_cmd, capture_output=True, text=True)
+                if stake_result.returncode == 0:
+                    wallet_data["reward_addr"] = stake_result.stdout.strip()
+                else:
+                    raise Exception(
+                        f"Failed to build stake address: {stake_result.stderr}"
+                    )
+
+                # Generate credentials
+                payment_cred_cmd = [
+                    str(self.tools["cardano-cli"]),
+                    "address",
+                    "key-hash",
+                    "--payment-verification-key-file",
+                    os.path.join(temp_dir, "payment.vkey"),
+                ]
+                payment_cred_result = subprocess.run(
+                    payment_cred_cmd, capture_output=True, text=True
+                )
+                if payment_cred_result.returncode == 0:
+                    wallet_data["payment_cred"] = payment_cred_result.stdout.strip()
+                else:
+                    raise Exception(
+                        f"Failed to generate payment credential: {payment_cred_result.stderr}"
+                    )
+
+                stake_cred_cmd = [
+                    str(self.tools["cardano-cli"]),
+                    "stake-address",
+                    "key-hash",
+                    "--stake-verification-key-file",
+                    os.path.join(temp_dir, "stake.vkey"),
+                ]
+                stake_cred_result = subprocess.run(
+                    stake_cred_cmd, capture_output=True, text=True
+                )
+                if stake_cred_result.returncode == 0:
+                    wallet_data["stake_cred"] = stake_cred_result.stdout.strip()
+                else:
+                    raise Exception(
+                        f"Failed to generate stake credential: {stake_cred_result.stderr}"
+                    )
+
+                # Generate certificates
+                stake_cert_cmd = [
+                    str(self.tools["cardano-cli"]),
+                    "stake-address",
+                    "registration-certificate",
+                    "--stake-verification-key-file",
+                    os.path.join(temp_dir, "stake.vkey"),
+                    "--out-file",
+                    os.path.join(temp_dir, "stake.cert"),
+                ]
+                stake_cert_result = subprocess.run(
+                    stake_cert_cmd, capture_output=True, text=True
+                )
+                if stake_cert_result.returncode == 0:
+                    with open(os.path.join(temp_dir, "stake.cert"), "r") as f:
+                        wallet_data["stake_cert"] = f.read()
+                else:
+                    raise Exception(
+                        f"Failed to generate stake certificate: {stake_cert_result.stderr}"
+                    )
+
+                # Generate other keys using deterministic method
+                import hashlib
+
+                mnemonic_hash = hashlib.sha256(mnemonic.encode()).digest()
+
+                # Cold and hot keys
+                cold_hash = hashlib.sha256(mnemonic_hash + "cold".encode()).digest()
+                wallet_data["cold_skey"] = "58" + "20" + cold_hash.hex()
+                wallet_data["cold_vkey"] = (
+                    "58" + "20" + hashlib.sha256(cold_hash).digest().hex()
+                )
+
+                hot_hash = hashlib.sha256(mnemonic_hash + "hot".encode()).digest()
+                wallet_data["hot_skey"] = "58" + "20" + hot_hash.hex()
+                wallet_data["hot_vkey"] = (
+                    "58" + "20" + hashlib.sha256(hot_hash).digest().hex()
+                )
+
+                # DRep keys
+                drep_hash = hashlib.sha256(mnemonic_hash + "drep".encode()).digest()
+                wallet_data["drep_skey"] = "58" + "20" + drep_hash.hex()
+                wallet_data["drep_vkey"] = (
+                    "58" + "20" + hashlib.sha256(drep_hash).digest().hex()
+                )
+
+                # Multi-signature keys
+                ms_payment_hash = hashlib.sha256(
+                    mnemonic_hash + "ms_payment".encode()
+                ).digest()
+                wallet_data["ms_payment_skey"] = "58" + "20" + ms_payment_hash.hex()
+                wallet_data["ms_payment_vkey"] = (
+                    "58" + "20" + hashlib.sha256(ms_payment_hash).digest().hex()
+                )
+
+                ms_stake_hash = hashlib.sha256(
+                    mnemonic_hash + "ms_stake".encode()
+                ).digest()
+                wallet_data["ms_stake_skey"] = "58" + "20" + ms_stake_hash.hex()
+                wallet_data["ms_stake_vkey"] = (
+                    "58" + "20" + hashlib.sha256(ms_stake_hash).digest().hex()
+                )
+
+                ms_drep_hash = hashlib.sha256(
+                    mnemonic_hash + "ms_drep".encode()
+                ).digest()
+                wallet_data["ms_drep_skey"] = "58" + "20" + ms_drep_hash.hex()
+                wallet_data["ms_drep_vkey"] = (
+                    "58" + "20" + hashlib.sha256(ms_drep_hash).digest().hex()
+                )
+
+                # Multi-signature credentials
+                wallet_data["ms_payment_cred"] = (
+                    hashlib.sha256(wallet_data["ms_payment_vkey"].encode())
+                    .digest()[:28]
+                    .hex()
+                )
+                wallet_data["ms_stake_cred"] = (
+                    hashlib.sha256(wallet_data["ms_stake_vkey"].encode())
+                    .digest()[:28]
+                    .hex()
+                )
+
+                # Delegation certificate (placeholder)
+                wallet_data["delegation_cert"] = self.generate_delegation_certificate(
+                    wallet_data["staking_skey"], wallet_data["cold_vkey"]
+                )
 
         except Exception as e:
-            click.echo(f"⚠️  Warning: Using fallback address generation: {e}")
-            # Fallback addresses with correct testnet format
+            click.echo(f"⚠️  Warning: Using fallback key generation: {e}")
+            # Fallback to deterministic generation
+            import hashlib
+
+            mnemonic_hash = hashlib.sha256(mnemonic.encode()).digest()
+
+            # Payment keys
+            payment_hash = hashlib.sha256(
+                mnemonic_hash + f"{purpose}_payment".encode()
+            ).digest()
+            wallet_data["payment_skey"] = "58" + "20" + payment_hash.hex()
+            wallet_data["payment_vkey"] = (
+                "58" + "20" + hashlib.sha256(payment_hash).digest().hex()
+            )
+
+            # Staking keys
+            stake_hash = hashlib.sha256(mnemonic_hash + "staking".encode()).digest()
+            wallet_data["staking_skey"] = "58" + "20" + stake_hash.hex()
+            wallet_data["staking_vkey"] = (
+                "58" + "20" + hashlib.sha256(stake_hash).digest().hex()
+            )
+
+            # Generate fallback addresses
             if network == "testnet":
                 wallet_data["base_addr"] = (
                     "addr_test1"
@@ -1546,66 +1897,70 @@ class CardanoWalletGenerator:
                     ]
                 )
 
-        # Generate credentials
-        wallet_data["payment_cred"] = (
-            hashlib.sha256(wallet_data["payment_vkey"].encode()).digest()[:28].hex()
-        )
-        wallet_data["stake_cred"] = (
-            hashlib.sha256(wallet_data["staking_vkey"].encode()).digest()[:28].hex()
-        )
+            # Generate credentials
+            wallet_data["payment_cred"] = (
+                hashlib.sha256(wallet_data["payment_vkey"].encode()).digest()[:28].hex()
+            )
+            wallet_data["stake_cred"] = (
+                hashlib.sha256(wallet_data["staking_vkey"].encode()).digest()[:28].hex()
+            )
 
-        # Generate cold and hot keys
-        cold_hash = hashlib.sha256(mnemonic_hash + "cold".encode()).digest()
-        wallet_data["cold_skey"] = "58" + "20" + cold_hash.hex()
-        wallet_data["cold_vkey"] = (
-            "58" + "20" + hashlib.sha256(cold_hash).digest().hex()
-        )
+            # Generate other keys
+            cold_hash = hashlib.sha256(mnemonic_hash + "cold".encode()).digest()
+            wallet_data["cold_skey"] = "58" + "20" + cold_hash.hex()
+            wallet_data["cold_vkey"] = (
+                "58" + "20" + hashlib.sha256(cold_hash).digest().hex()
+            )
 
-        hot_hash = hashlib.sha256(mnemonic_hash + "hot".encode()).digest()
-        wallet_data["hot_skey"] = "58" + "20" + hot_hash.hex()
-        wallet_data["hot_vkey"] = "58" + "20" + hashlib.sha256(hot_hash).digest().hex()
+            hot_hash = hashlib.sha256(mnemonic_hash + "hot".encode()).digest()
+            wallet_data["hot_skey"] = "58" + "20" + hot_hash.hex()
+            wallet_data["hot_vkey"] = (
+                "58" + "20" + hashlib.sha256(hot_hash).digest().hex()
+            )
 
-        # Generate DRep keys
-        drep_hash = hashlib.sha256(mnemonic_hash + "drep".encode()).digest()
-        wallet_data["drep_skey"] = "58" + "20" + drep_hash.hex()
-        wallet_data["drep_vkey"] = (
-            "58" + "20" + hashlib.sha256(drep_hash).digest().hex()
-        )
+            drep_hash = hashlib.sha256(mnemonic_hash + "drep".encode()).digest()
+            wallet_data["drep_skey"] = "58" + "20" + drep_hash.hex()
+            wallet_data["drep_vkey"] = (
+                "58" + "20" + hashlib.sha256(drep_hash).digest().hex()
+            )
 
-        # Generate multi-signature keys
-        ms_payment_hash = hashlib.sha256(mnemonic_hash + "ms_payment".encode()).digest()
-        wallet_data["ms_payment_skey"] = "58" + "20" + ms_payment_hash.hex()
-        wallet_data["ms_payment_vkey"] = (
-            "58" + "20" + hashlib.sha256(ms_payment_hash).digest().hex()
-        )
+            ms_payment_hash = hashlib.sha256(
+                mnemonic_hash + "ms_payment".encode()
+            ).digest()
+            wallet_data["ms_payment_skey"] = "58" + "20" + ms_payment_hash.hex()
+            wallet_data["ms_payment_vkey"] = (
+                "58" + "20" + hashlib.sha256(ms_payment_hash).digest().hex()
+            )
 
-        ms_stake_hash = hashlib.sha256(mnemonic_hash + "ms_stake".encode()).digest()
-        wallet_data["ms_stake_skey"] = "58" + "20" + ms_stake_hash.hex()
-        wallet_data["ms_stake_vkey"] = (
-            "58" + "20" + hashlib.sha256(ms_stake_hash).digest().hex()
-        )
+            ms_stake_hash = hashlib.sha256(mnemonic_hash + "ms_stake".encode()).digest()
+            wallet_data["ms_stake_skey"] = "58" + "20" + ms_stake_hash.hex()
+            wallet_data["ms_stake_vkey"] = (
+                "58" + "20" + hashlib.sha256(ms_stake_hash).digest().hex()
+            )
 
-        ms_drep_hash = hashlib.sha256(mnemonic_hash + "ms_drep".encode()).digest()
-        wallet_data["ms_drep_skey"] = "58" + "20" + ms_drep_hash.hex()
-        wallet_data["ms_drep_vkey"] = (
-            "58" + "20" + hashlib.sha256(ms_drep_hash).digest().hex()
-        )
+            ms_drep_hash = hashlib.sha256(mnemonic_hash + "ms_drep".encode()).digest()
+            wallet_data["ms_drep_skey"] = "58" + "20" + ms_drep_hash.hex()
+            wallet_data["ms_drep_vkey"] = (
+                "58" + "20" + hashlib.sha256(ms_drep_hash).digest().hex()
+            )
 
-        # Generate credentials
-        wallet_data["ms_payment_cred"] = (
-            hashlib.sha256(wallet_data["ms_payment_vkey"].encode()).digest()[:28].hex()
-        )
-        wallet_data["ms_stake_cred"] = (
-            hashlib.sha256(wallet_data["ms_stake_vkey"].encode()).digest()[:28].hex()
-        )
+            wallet_data["ms_payment_cred"] = (
+                hashlib.sha256(wallet_data["ms_payment_vkey"].encode())
+                .digest()[:28]
+                .hex()
+            )
+            wallet_data["ms_stake_cred"] = (
+                hashlib.sha256(wallet_data["ms_stake_vkey"].encode())
+                .digest()[:28]
+                .hex()
+            )
 
-        # Generate certificates (simplified)
-        wallet_data["stake_cert"] = self.generate_stake_certificate(
-            wallet_data["staking_skey"], wallet_data["staking_vkey"]
-        )
-        wallet_data["delegation_cert"] = self.generate_delegation_certificate(
-            wallet_data["staking_skey"], wallet_data["cold_vkey"]
-        )
+            wallet_data["stake_cert"] = self.generate_stake_certificate(
+                wallet_data["staking_skey"], wallet_data["staking_vkey"]
+            )
+            wallet_data["delegation_cert"] = self.generate_delegation_certificate(
+                wallet_data["staking_skey"], wallet_data["cold_vkey"]
+            )
 
         return wallet_data
 

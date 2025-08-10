@@ -1,4 +1,4 @@
-# 📦 Export Quick Reference
+# 📦 Export Quick Reference - Cardano SPO CLI v1.1.0
 
 ## 🚀 **Quick Export Commands**
 

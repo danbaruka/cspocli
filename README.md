@@ -1,6 +1,6 @@
-# Cardano SPO CLI
+# Cardano SPO CLI v1.1.0
 
-Professional Cardano Stake Pool Operator CLI tool with complete stake pool file generation.
+Professional Cardano Stake Pool Operator CLI tool with complete stake pool file generation and management.
 
 ## Features
 
@@ -68,6 +68,7 @@ cspocli export --ticker MYPOOL --purpose pledge --password mypassword
 
 ## Documentation
 
+- [Documentation Index](docs/README.md) - Complete documentation overview
 - [Usage Guide](USAGE.md) - Detailed usage instructions
 - [Security Guide](docs/SECURITY_GUIDE.md) - Password protection and security features
 - [Export & Upload Guide](docs/EXPORT_AND_UPLOAD_GUIDE.md) - Secure export and upload process
@@ -75,7 +76,9 @@ cspocli export --ticker MYPOOL --purpose pledge --password mypassword
 - [Complete Stake Pool Guide](docs/COMPLETE_STAKE_POOL_GUIDE.md) - Complete stake pool generation
 - [Password Explanation](docs/PASSWORD_EXPLANATION.md) - Why password is needed for installation
 - [Export Quick Reference](docs/EXPORT_QUICK_REFERENCE.md) - Quick export commands
+- [Code Examples](docs/CODE_EXAMPLES.md) - Complete code examples with expected outputs
 - [Real Tools Guide](REAL_TOOLS.md) - Manual Cardano tools installation
+- [Changelog](CHANGELOG.md) - Version history and changes
 
 ## Support
 

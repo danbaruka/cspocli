@@ -1,4 +1,4 @@
-# 📦 Export and Upload Guide
+# 📦 Export and Upload Guide - Cardano SPO CLI v1.1.0
 
 ## 🔒 **Export Process Overview**
 
