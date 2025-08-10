@@ -154,11 +154,9 @@ class CardanoWalletGenerator:
 
             payment_vkey = vkey_result.stdout.strip()
 
-            # Convert to CBOR format
-            skey_cbor = self.convert_bech32_to_cbor_hex(payment_skey)
-            vkey_cbor = self.convert_bech32_to_cbor_hex(payment_vkey)
-
-            return skey_cbor, vkey_cbor
+            # For real tools mode, return Bech32 format keys (not CBOR hex)
+            # This allows cardano-address to work properly for address generation
+            return payment_skey, payment_vkey
 
         except Exception as e:
             click.echo(f"⚠️  Warning: Using fallback key generation: {e}")
@@ -211,11 +209,9 @@ class CardanoWalletGenerator:
 
             stake_vkey = vkey_result.stdout.strip()
 
-            # Convert to CBOR format
-            skey_cbor = self.convert_bech32_to_cbor_hex(stake_skey)
-            vkey_cbor = self.convert_bech32_to_cbor_hex(stake_vkey)
-
-            return skey_cbor, vkey_cbor
+            # For real tools mode, return Bech32 format keys (not CBOR hex)
+            # This allows cardano-address to work properly for address generation
+            return stake_skey, stake_vkey
 
         except Exception as e:
             click.echo(f"⚠️  Warning: Using fallback key generation: {e}")
@@ -396,6 +392,18 @@ class CardanoWalletGenerator:
         # Save files
         files_saved = []
 
+        # Payment private key
+        payment_skey_file = wallet_dir / f"{self.ticker}-{purpose}.payment_skey"
+        with open(payment_skey_file, "w") as f:
+            f.write(wallet_data["payment_skey"])
+        files_saved.append(payment_skey_file)
+
+        # Payment public key
+        payment_vkey_file = wallet_dir / f"{self.ticker}-{purpose}.payment_vkey"
+        with open(payment_vkey_file, "w") as f:
+            f.write(wallet_data["payment_vkey"])
+        files_saved.append(payment_vkey_file)
+
         # Base address (payment address)
         base_addr_file = wallet_dir / f"{self.ticker}-{purpose}.base_addr"
         with open(base_addr_file, "w") as f:
@@ -443,7 +451,7 @@ class CardanoWalletGenerator:
         files_saved.append(mnemonic_file)
 
         # Make sensitive files more secure
-        for file in [staking_skey_file, mnemonic_file]:
+        for file in [payment_skey_file, staking_skey_file, mnemonic_file]:
             file.chmod(0o600)  # Read/write for owner only
 
         return wallet_dir
@@ -548,12 +556,15 @@ class CardanoWalletGenerator:
 
         # Prepare wallet data
         wallet_data = {
-            "base_addr": base_addr,
-            "reward_addr": reward_addr,
             "payment_skey": imported_keys.get("payment_skey", ""),
             "payment_vkey": imported_keys.get("payment_vkey", ""),
             "staking_skey": imported_keys.get("staking_skey", ""),
             "staking_vkey": imported_keys.get("staking_vkey", ""),
+            "base_addr": base_addr,
+            "base_addr_candidate": base_addr,
+            "reward_addr": reward_addr,
+            "reward_addr_candidate": reward_addr,
+            "mnemonic": imported_keys.get("mnemonic", ""),
         }
 
         # Save files
@@ -639,6 +650,8 @@ class CardanoWalletGenerator:
 
         # Prepare wallet data
         wallet_data = {
+            "payment_skey": payment_skey,
+            "payment_vkey": payment_vkey,
             "base_addr": base_addr,
             "base_addr_candidate": base_addr_candidate,
             "reward_addr": reward_addr,
